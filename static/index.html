@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MindBridge AI</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div>
+        <h1>MindBridge AI</h1>
+        <div class="tagline">Just a friend, here to listen and help you manage</div>
+        <div class="sub">Project: MindBridge AI • Session: <span id="sessionId">...</span></div>
+
+      <div class="controls">
+        <select id="modeSelect" title="Mode">
+          <option>General</option>
+          <option>Study</option>
+          <option>Summarize</option>
+          <option>Coding</option>
+        </select>
+
+        <label class="chk">
+          <input type="checkbox" id="ragToggle" checked />
+          RAG
+        </label>
+
+        <label class="chk">
+          <input type="checkbox" id="streamToggle" checked />
+          Stream
+        </label>
+
+        <button id="newChatBtn" class="btn">New chat</button>
+        <button id="clearBtn" class="btn btn-ghost">Clear</button>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="chat">
+        <div id="chatBox" class="chatBox"></div>
+
+        <div class="composer">
+          <textarea id="msgInput" rows="2" placeholder="Nhập tin nhắn... (Enter để gửi, Shift+Enter xuống dòng)"></textarea>
+          <button id="sendBtn" class="btn btn-primary">Send</button>
+        </div>
+
+        <div class="status" id="status"></div>
+      </section>
+
+      <aside class="side">
+        <div class="card">
+          <h3>Upload (RAG)</h3>
+          <p class="muted">
+            Upload your notes (TXT/MD). PDF works if <code>pypdf</code> is installed.
+            Turn on <b>RAG</b> so the bot can answer using your uploaded content.
+          </p>
+          <input type="file" id="fileInput" />
+          <button id="uploadBtn" class="btn">Upload</button>
+          <div class="muted" id="ragStatus"></div>
+        </div>
+
+        <div class="card">
+          <h3>Demo tips</h3>
+          <ul>
+            <li>Select <b>Health</b> for calming support, coping tools, and a simple 10-minute reset plan.</li>
+            <li>Select <b>School Stress</b> when you have <b>deadlines/ddl</b> or too much homework — the bot will help you prioritize and break tasks into small steps.</li>
+            <li>Select <b>Friends</b> for friendship drama/conflict — the bot suggests what to say (with short message scripts) and boundary tips.</li>
+            <li>Select <b>Coding</b> for coding/debugging — paste the error + relevant snippet for fastest help.</li>
+            <li>Turn on <b>Stream</b> to see responses appear live (ChatGPT-style demo).</li>
+            <li>(Optional) Turn on <b>RAG</b> + upload TXT/MD notes so answers can reference your uploaded content.</li>
+          </ul>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
