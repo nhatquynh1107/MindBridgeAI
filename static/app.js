@@ -20,7 +20,7 @@ let sessionId = localStorage.getItem("session_id") || "";
 function addMsg(role, text) {
   const div = document.createElement("div");
   div.className = `msg ${role === "user" ? "user" : "bot"}`;
-  div.textContent = text;
+  div.innerHTML = window.marked?.parse ? marked.parse(text) : text;
   chatBox.appendChild(div);
   chatBox.scrollTop = chatBox.scrollHeight;
   return div;
@@ -141,12 +141,12 @@ async function sendMessage() {
       if (done) break;
       const chunk = decoder.decode(value, { stream: true });
       acc += chunk;
-      botDiv.textContent = acc;
+      botDiv.innerHTML = window.marked?.parse ? marked.parse(acc) : acc;
       chatBox.scrollTop = chatBox.scrollHeight;
     }
     setStatus("");
   } catch (e) {
-    botDiv.textContent += `\n\n❌ Error: ${e.message}`;
+    botDiv.innerHTML += `\n\n❌ Error: ${e.message}`;
     setStatus("");
   }
 }

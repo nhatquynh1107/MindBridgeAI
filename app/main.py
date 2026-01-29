@@ -17,6 +17,9 @@ from .rag import chunk_by_words, cosine_top_k, read_pdf_file, read_text_file
 from .schemas import ChatRequest, ChatResponse, ClearRequest, NewSessionResponse
 from .store import RAGChunk, store
 
+from pathlib import Path
+from .local_llm import local_generate_reply
+
 CRISIS_KEYWORDS = [
     "kill myself",
     "suicide",
@@ -39,13 +42,53 @@ def is_crisis(text: str) -> bool:
     t = (text or "").lower()
     return any(k in t for k in CRISIS_KEYWORDS)
 
+from dotenv import load_dotenv
+load_dotenv()
 
 def is_demo() -> bool:
-    return os.getenv("DEMO_MOCK", "0").lower() in ("1", "true", "yes", "on")
+    v = (os.getenv("DEMO_MOCK") or "").strip().lower()
+    return v in ("1", "true", "yes", "on")
 
+def is_local_only() -> bool:
+    return os.getenv("LOCAL_ONLY", "0").lower() in ("1", "true", "yes", "on")
+
+
+KB_DIR = Path(__file__).resolve().parent / "knowledge"
+
+def autoload_builtin_kb(session_id: str) -> None:
+    # auto load app/knowledge/*.md into session RAG chunks (no embeddings needed)
+    if os.getenv("AUTO_LOAD_KB", "1").lower() in ("0", "false", "no", "off"):
+        return
+
+    if store.get_rag_chunks(session_id):
+        return
+
+    if not KB_DIR.exists():
+        return
+
+    rag_chunks: List[RAGChunk] = []
+    max_chunks_per_doc = int(os.getenv("KB_MAX_CHUNKS_PER_DOC", "40"))
+
+    for f in sorted(KB_DIR.glob("*.md")):
+        text = f.read_text(encoding="utf-8", errors="ignore")
+        text = text.replace("\r\n", "\n").replace("\r", "\n")
+        text = re.sub(r"\n{3,}", "\n\n", text).strip()
+        chunks = chunk_by_words(text)[:max_chunks_per_doc]
+        for i, ch in enumerate(chunks):
+            rag_chunks.append(
+                RAGChunk(
+                    doc_name=f.name,
+                    chunk_id=f"{f.name}#{i}",
+                    text=ch,
+                    embedding=[0.0],  # placeholder
+                )
+            )
+
+    if rag_chunks:
+        store.add_rag_chunks(session_id, rag_chunks)
 
 def require_api_key() -> None:
-    if is_demo():
+    if is_demo() or is_local_only():
         return
     if not os.getenv("GEMINI_API_KEY"):
         raise HTTPException(
@@ -82,11 +125,16 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 def root():
     return FileResponse("static/index.html")
 
-
 @app.get("/health")
 def health():
-    return {"ok": True, "demo": is_demo(), "backend": "gemini"}
-
+    backend = "ollama" if is_local_only() else ("demo" if is_demo() else "gemini")
+    return {
+        "ok": True,
+        "backend": backend,
+        "demo": is_demo(),
+        "local_only": is_local_only(),
+        "has_gemini_key": bool(os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")),
+    }
 
 @app.get("/api/modes")
 def modes():
@@ -97,8 +145,8 @@ def modes():
 def new_session():
     sid = uuid.uuid4().hex
     store.get_or_create(sid)
+    autoload_builtin_kb(sid)  
     return NewSessionResponse(session_id=sid)
-
 
 @app.post("/api/session/clear")
 def clear_session(payload: ClearRequest):
@@ -117,6 +165,22 @@ def build_instructions(mode: str, rag_context: Optional[str]) -> str:
         )
     return base
 
+def make_rag_context_local(session_id: str, query: str, k: int = 4) -> str:
+    chunks = store.get_rag_chunks(session_id)
+    if not chunks:
+        return ""
+
+    q = set(re.findall(r"[a-zA-Z0-9_]+", query.lower()))
+    scored = []
+    for c in chunks:
+        t = set(re.findall(r"[a-zA-Z0-9_]+", (c.text or "").lower()))
+        score = len(q & t)
+        if score > 0:
+            scored.append((c.chunk_id, score, c.text))
+
+    scored.sort(key=lambda x: x[1], reverse=True)
+    top = scored[:k]
+    return "\n\n".join([f"[{cid}] {txt[:900]}" for cid, _s, txt in top])
 
 def make_rag_context(session_id: str, query: str, k: int = 4) -> str:
     chunks = store.get_rag_chunks(session_id)
@@ -492,6 +556,30 @@ def chat(payload: ChatRequest):
         store.append_history(payload.session_id, "assistant", answer)
         return ChatResponse(session_id=payload.session_id, reply=answer, mode=payload.mode)
 
+    # ===== LOCAL ONLY (Ollama) =====
+    if is_local_only():
+        store.get_or_create(payload.session_id)
+        autoload_builtin_kb(payload.session_id)
+        history = store.get_history(payload.session_id)
+
+        rag_context = ""
+        if payload.use_rag:
+            rag_context = make_rag_context_local(payload.session_id, payload.message)
+
+        instructions = build_instructions(payload.mode, rag_context)
+
+        hist_tuples = [(m["role"], m.get("content", "")) for m in history if m.get("content")]
+
+        try:
+            answer = local_generate_reply(payload.mode, instructions, hist_tuples, payload.message)
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"Ollama local call failed: {e}")
+
+        store.append_history(payload.session_id, "user", payload.message)
+        store.append_history(payload.session_id, "assistant", answer)
+        return ChatResponse(session_id=payload.session_id, reply=answer, mode=payload.mode)
+    # ===============================
+
     require_api_key()
     store.get_or_create(payload.session_id)
     history = store.get_history(payload.session_id)
@@ -533,6 +621,32 @@ def chat_stream(payload: ChatRequest):
             store.append_history(payload.session_id, "assistant", CRISIS_RESPONSE)
 
         return StreamingResponse(gen(), media_type="text/plain; charset=utf-8")
+    # ===== LOCAL ONLY (Ollama) =====
+    if is_local_only():
+        store.get_or_create(payload.session_id)
+        autoload_builtin_kb(payload.session_id)
+        history = store.get_history(payload.session_id)
+
+        rag_context = ""
+        if payload.use_rag:
+            rag_context = make_rag_context_local(payload.session_id, payload.message)
+
+        instructions = build_instructions(payload.mode, rag_context)
+        hist_tuples = [(m["role"], m.get("content", "")) for m in history if m.get("content")]
+
+        try:
+            text = local_generate_reply(payload.mode, instructions, hist_tuples, payload.message)
+        except Exception as e:
+            text = f"\n\n[Error] Ollama local call failed: {e}\n"
+
+        def gen():
+            for i in range(0, len(text), 10):
+                yield text[i : i + 10].encode("utf-8")
+            store.append_history(payload.session_id, "user", payload.message)
+            store.append_history(payload.session_id, "assistant", text)
+
+        return StreamingResponse(gen(), media_type="text/plain; charset=utf-8")
+    # ===============================
 
     if is_demo():
         store.get_or_create(payload.session_id)
@@ -587,111 +701,6 @@ def chat_stream(payload: ChatRequest):
             store.append_history(payload.session_id, "assistant", answer)
 
     return StreamingResponse(gen(), media_type="text/plain; charset=utf-8")
-
-
-@app.post("/api/rag/upload")
-async def rag_upload(session_id: str, file: UploadFile = File(...)):
-    require_api_key()
-    if not session_id or len(session_id) < 6:
-        raise HTTPException(status_code=400, detail="Invalid session_id.")
-
-    if is_demo():
-        raw = await file.read()
-        if not raw:
-            raise HTTPException(status_code=400, detail="Empty file.")
-
-        filename = (file.filename or "upload").strip()
-        ext = filename.lower().split(".")[-1] if "." in filename else ""
-
-        if ext in ("txt", "md", "markdown"):
-            text = read_text_file(filename, raw)
-        elif ext == "pdf":
-            text = read_pdf_file(raw)
-        else:
-            raise HTTPException(status_code=400, detail="Unsupported file type. Use TXT/MD (PDF optional).")
-
-        chunks = chunk_by_words(text)
-        if not chunks:
-            raise HTTPException(status_code=400, detail="No text extracted from file.")
-
-        max_chunks = int(os.getenv("RAG_MAX_CHUNKS", "60"))
-        chunks = chunks[:max_chunks]
-
-        rag_chunks: List[RAGChunk] = []
-        for i, ch in enumerate(chunks):
-            rag_chunks.append(
-                RAGChunk(
-                    doc_name=filename,
-                    chunk_id=f"{filename}#{i}",
-                    text=ch,
-                    embedding=[0.0],
-                )
-            )
-
-        store.add_rag_chunks(session_id, rag_chunks)
-        return {"ok": True, "session_id": session_id, "added_chunks": len(rag_chunks), "demo": True}
-
-    raw = await file.read()
-    if not raw:
-        raise HTTPException(status_code=400, detail="Empty file.")
-
-    filename = (file.filename or "upload").strip()
-    ext = filename.lower().split(".")[-1] if "." in filename else ""
-
-    try:
-        if ext in ("txt", "md", "markdown"):
-            text = read_text_file(filename, raw)
-        elif ext == "pdf":
-            text = read_pdf_file(raw)
-        else:
-            raise HTTPException(status_code=400, detail="Unsupported file type. Use TXT/MD (PDF optional).")
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"File parse failed: {e}")
-
-    chunks = chunk_by_words(text)
-    if not chunks:
-        raise HTTPException(status_code=400, detail="No text extracted from file.")
-
-    max_chunks = int(os.getenv("RAG_MAX_CHUNKS", "60"))
-    chunks = chunks[:max_chunks]
-
-    configure_gemini()
-    try:
-        result = genai.embed_content(
-            model="models/text-embedding-004",
-            content=chunks,
-            task_type="retrieval_document",
-            title=filename
-        )
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Embedding failed: {e}")
-
-    embeddings = result['embedding']
-    
-    rag_chunks: List[RAGChunk] = []
-    for i, emb in enumerate(embeddings):
-        if i < len(chunks):
-            rag_chunks.append(
-                RAGChunk(
-                    doc_name=filename,
-                    chunk_id=f"{filename}#{i}",
-                    text=chunks[i],
-                    embedding=emb,
-                )
-            )
-
-    store.add_rag_chunks(session_id, rag_chunks)
-    return {"ok": True, "session_id": session_id, "added_chunks": len(rag_chunks)}
-
-
-@app.get("/api/rag/status")
-def rag_status(session_id: str):
-    if not session_id:
-        raise HTTPException(status_code=400, detail="Missing session_id.")
-    return store.rag_status(session_id)
-
 
 @app.get("/api/session/history")
 def session_history(session_id: str = Query(...)):
