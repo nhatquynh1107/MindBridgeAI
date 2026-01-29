@@ -93,6 +93,15 @@ async function sendMessage() {
   const text = msgInput.value.trim();
   if (!text) return;
 
+  if (!sessionId || sessionId.length < 6) {
+    try {
+      await apiNewSession();
+    } catch (e) {
+      addMsg("bot", `❌ Cannot create session: ${e.message}`);
+      return;
+    }
+  }
+
   addMsg("user", text);
   msgInput.value = "";
   setStatus("Thinking...");
