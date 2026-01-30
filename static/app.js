@@ -31,7 +31,6 @@ async function ensureSession() {
   }
 }
 
-
 async function apiNewSession() {
   const res = await fetch("/api/session/new", { method: "POST" });
   if (!res.ok) throw new Error(await res.text());
@@ -40,7 +39,6 @@ async function apiNewSession() {
   localStorage.setItem("session_id", sessionId);
   sessionIdEl.textContent = sessionId;
   chatBox.innerHTML = "";
-  await refreshRagStatus();
 }
 
 async function apiClear() {
@@ -51,19 +49,6 @@ async function apiClear() {
   });
   if (!res.ok) throw new Error(await res.text());
   chatBox.innerHTML = "";
-  await refreshRagStatus();
-}
-
-async function refreshRagStatus() {
-  if (!sessionId) return;
-  try {
-    const res = await fetch(`/api/rag/status?session_id=${encodeURIComponent(sessionId)}`);
-    if (!res.ok) { ragStatusEl.textContent = ""; return; }
-    const data = await res.json();
-    ragStatusEl.textContent = `RAG chunks: ${data.total_chunks}`;
-  } catch {
-    ragStatusEl.textContent = "";
-  }
 }
 
 async function loadModes() {
