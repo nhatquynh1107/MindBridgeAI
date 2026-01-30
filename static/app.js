@@ -11,10 +11,6 @@ const statusEl = $("status");
 const newChatBtn = $("newChatBtn");
 const clearBtn = $("clearBtn");
 
-const fileInput = $("fileInput");
-const uploadBtn = $("uploadBtn");
-const ragStatusEl = $("ragStatus");
-
 let sessionId = localStorage.getItem("session_id") || "";
 
 function addMsg(role, text) {
@@ -185,34 +181,11 @@ clearBtn.addEventListener("click", () =>
   apiClear().catch(err => addMsg("bot", `❌ Error: ${err.message}`))
 );
 
-uploadBtn.addEventListener("click", async () => {
-  if (!fileInput.files || fileInput.files.length === 0) return;
-  const f = fileInput.files[0];
-  setStatus("Uploading & indexing...");
-
-  try {
-    const form = new FormData();
-    form.append("file", f);
-
-    const res = await fetch(`/api/rag/upload?session_id=${encodeURIComponent(sessionId)}`, {
-      method: "POST",
-      body: form
-    });
-    const raw = await res.text();
-    if (!res.ok) throw new Error(raw);
-    await refreshRagStatus();
-    setStatus("Upload OK.");
-    setTimeout(() => setStatus(""), 1200);
-  } catch (e) {
-    setStatus("");
-    addMsg("bot", `❌ Upload error: ${e.message}`);
-  }
-});
-
 (async function init() {
   try {
     sendBtn.disabled = true;
     await loadModes();
+    await ensureSession();
     if (!sessionId || sessionId.length < 6) await apiNewSession();
     sessionIdEl.textContent = sessionId;
   } catch (e) {
