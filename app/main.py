@@ -532,10 +532,6 @@ def _to_gemini_history(history: List[Dict[str, str]]):
 
 @app.post("/api/chat", response_model=ChatResponse)
 def chat(payload: ChatRequest):
-    if not payload.session_id or len(payload.session_id) < 6:
-        payload.session_id = uuid.uuid4().hex
-        store.get_or_create(payload.session_id)
-    
     if not payload.message.strip():
         raise HTTPException(status_code=400, detail="Empty input.")
     
@@ -612,10 +608,6 @@ def chat(payload: ChatRequest):
 
 @app.post("/api/chat/stream")
 def chat_stream(payload: ChatRequest):
-    if not payload.session_id or len(payload.session_id) < 6:
-        payload.session_id = uuid.uuid4().hex
-        store.get_or_create(payload.session_id)
-    
     if not payload.message.strip():
         raise HTTPException(status_code=400, detail="Empty input.")
     

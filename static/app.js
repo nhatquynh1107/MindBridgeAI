@@ -28,6 +28,14 @@ function addMsg(role, text) {
 
 function setStatus(s) { statusEl.textContent = s || ""; }
 
+async function ensureSession() {
+  sessionId = localStorage.getItem("session_id") || "";
+  if (!sessionId || sessionId.length < 6) {
+    await apiNewSession();
+  }
+}
+
+
 async function apiNewSession() {
   const res = await fetch("/api/session/new", { method: "POST" });
   if (!res.ok) throw new Error(await res.text());
@@ -92,6 +100,8 @@ modeSelect.addEventListener("change", () => {
 async function sendMessage() {
   const text = msgInput.value.trim();
   if (!text) return;
+
+  await ensureSession();
 
   if (!sessionId || sessionId.length < 6) {
     try {
@@ -201,11 +211,14 @@ uploadBtn.addEventListener("click", async () => {
 
 (async function init() {
   try {
+    sendBtn.disabled = true;
     await loadModes();
-    if (!sessionId) await apiNewSession();
+    if (!sessionId || sessionId.length < 6) await apiNewSession();
     sessionIdEl.textContent = sessionId;
-    await refreshRagStatus();
   } catch (e) {
     addMsg("bot", `❌ Init error: ${e.message}`);
+  } finally {
+    sendBtn.disabled = false;
   }
 })();
+
