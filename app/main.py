@@ -532,6 +532,7 @@ def _to_gemini_history(history: List[Dict[str, str]]):
 
 @app.post("/api/chat", response_model=ChatResponse)
 def chat(payload: ChatRequest):
+    payload.use_rag = False  
     if not payload.message.strip():
         raise HTTPException(status_code=400, detail="Empty input.")
     
@@ -608,6 +609,7 @@ def chat(payload: ChatRequest):
 
 @app.post("/api/chat/stream")
 def chat_stream(payload: ChatRequest):
+    payload.use_rag = False
     if not payload.message.strip():
         raise HTTPException(status_code=400, detail="Empty input.")
     

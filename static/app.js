@@ -98,7 +98,7 @@ async function sendMessage() {
   setStatus("Thinking...");
 
   const mode = modeSelect.value;
-  const useRag = ragToggle.checked;
+  const useRag = false;
   const stream = streamToggle.checked;
 
   if (!stream) {
