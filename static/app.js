@@ -74,8 +74,20 @@ async function loadModes() {
   }
 }
 
-modeSelect.addEventListener("change", () => {
+modeSelect.addEventListener("change", async () => {
   localStorage.setItem("mode", modeSelect.value);
+
+  try {
+    setStatus("Switching mode... clearing chat");
+    await ensureSession();
+    await apiClear();
+    msgInput.value = "";
+    msgInput.focus();
+  } catch (e) {
+    addMsg("bot", `❌ Auto-clear on mode change failed: ${e.message}`);
+  } finally {
+    setStatus("");
+  }
 });
 
 async function sendMessage() {
