@@ -79,12 +79,10 @@ modeSelect.addEventListener("change", async () => {
 
   try {
     setStatus("Switching mode... clearing chat");
-    await ensureSession();
-    await apiClear();
-    msgInput.value = "";
-    msgInput.focus();
+    await apiNewSession();
+    addMsg("bot", `✅ Switched to **${modeSelect.value}**. New chat started.`);
   } catch (e) {
-    addMsg("bot", `❌ Auto-clear on mode change failed: ${e.message}`);
+    addMsg("bot", `❌ Mode switch error: ${e.message}`);
   } finally {
     setStatus("");
   }
