@@ -14,13 +14,26 @@ const clearBtn = $("clearBtn");
 let sessionId = localStorage.getItem("session_id") || "";
 
 function addMsg(role, text) {
-  const div = document.createElement("div");
-  div.className = `msg ${role === "user" ? "user" : "bot"}`;
-  div.innerHTML = window.marked?.parse ? marked.parse(text) : text;
-  chatBox.appendChild(div);
+  const row = document.createElement("div");
+  row.className = `msg ${role === "user" ? "user" : "bot"}`;
+
+  const avatar = document.createElement("div");
+  avatar.className = "avatar";
+  avatar.textContent = role === "user" ? "U" : "MB";
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  bubble.innerHTML = window.marked?.parse ? marked.parse(text) : text;
+
+  if (role === "user") row.append(bubble, avatar);
+  else row.append(avatar, bubble);
+
+  chatBox.appendChild(row);
   chatBox.scrollTop = chatBox.scrollHeight;
-  return div;
+
+  return bubble;
 }
+
 
 function setStatus(s) { statusEl.textContent = s || ""; }
 
