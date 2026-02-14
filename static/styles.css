@@ -71,20 +71,34 @@ a {
 }
 
 .controls {
-  margin-top: 12px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
+  position: relative;
+  display: inline-block;
 }
 
 .controls select {
   appearance: none;
-  background: rgba(255, 255, 255, .8);
-  border: 1px solid rgba(0, 0, 0, .08);
-  border-radius: 999px;
-  padding: 8px 12px;
-  font: inherit;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  padding-right: 34px;
+}
+
+.controls::after {
+  content: ">";
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%) rotate(90deg);
+  transform-origin: center;
+  font-size: 14px;
+  opacity: .65;
+  pointer-events: none;
+  transition: transform .18s ease, opacity .18s ease;
+}
+
+.controls:focus-within::after {
+  transform: translateY(-50%) rotate(180deg);
+  opacity: .9;
 }
 
 .chk {
