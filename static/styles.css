@@ -269,6 +269,40 @@ a {
   margin: 0 0 10px;
 }
 
+.card-split {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, .78);
+  border: 1px solid rgba(255, 255, 255, .75);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, .12);
+  backdrop-filter: blur(10px);
+}
+
+.card-head {
+  padding: 14px 16px;
+  font-weight: 800;
+  font-size: 18px;
+  background: rgba(255, 196, 214, .9);
+  /* hồng */
+  border-bottom: 1px solid rgba(255, 255, 255, .6);
+}
+
+.card-body {
+  padding: 14px 16px 16px;
+  background: rgba(255, 255, 245, .85);
+}
+
+.card-body ul {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.35;
+}
+
+.card-body li {
+  margin: 10px 0;
+}
+
 @media (max-width: 980px) {
   .main {
     grid-template-columns: 1fr;
