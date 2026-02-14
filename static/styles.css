@@ -80,25 +80,25 @@ a {
   -webkit-appearance: none;
   -moz-appearance: none;
 
-  padding-right: 34px;
+  background: rgba(255, 255, 255, .8);
+  border: 1px solid rgba(0, 0, 0, .08);
+  border-radius: 999px;
+  padding: 8px 36px 8px 12px;
+  font: inherit;
 }
 
 .controls::after {
-  content: ">";
+  content: "";
   position: absolute;
   right: 14px;
   top: 50%;
-  transform: translateY(-50%) rotate(90deg);
-  transform-origin: center;
-  font-size: 14px;
-  opacity: .65;
+  width: 0;
+  height: 0;
+  transform: translateY(-50%);
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid rgba(0, 0, 0, .45);
   pointer-events: none;
-  transition: transform .18s ease, opacity .18s ease;
-}
-
-.controls:focus-within::after {
-  transform: translateY(-50%) rotate(180deg);
-  opacity: .9;
 }
 
 .chk {
