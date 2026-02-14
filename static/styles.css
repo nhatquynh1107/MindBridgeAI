@@ -97,11 +97,8 @@ a {
   -webkit-appearance: none;
   -moz-appearance: none;
 
-  background:
-    radial-gradient(1200px 700px at 20% 10%, #c9f2e6, transparent 70%),
-    radial-gradient(900px 600px at 80% 0%, #f5d6df, transparent 70%),
-    linear-gradient(180deg, #e9fff9, #fff4f7);
-  border: 1px solid rgba(0, 0, 0, .08);
+  background: linear-gradient(135deg, rgba(255, 215, 235, .95), rgba(215, 235, 255, .85));
+  border: 1px solid rgba(255, 255, 255, .65);
   border-radius: 999px;
   padding: 8px 36px 8px 12px;
   font: inherit;
