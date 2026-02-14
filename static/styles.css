@@ -71,11 +71,28 @@ a {
 }
 
 .controls {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.controls select {
+  appearance: none;
+  background: rgba(255, 255, 255, .8);
+  border: 1px solid rgba(0, 0, 0, .08);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font: inherit;
+}
+
+.selectWrap {
   position: relative;
   display: inline-block;
 }
 
-.controls select {
+.selectWrap select {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -87,7 +104,7 @@ a {
   font: inherit;
 }
 
-.controls::after {
+.selectWrap::after {
   content: "";
   position: absolute;
   right: 14px;
